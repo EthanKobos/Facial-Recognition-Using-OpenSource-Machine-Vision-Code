@@ -1,0 +1,61 @@
+import cv2
+import os
+import numpy as np
+
+face_cascade = load_haar_cascade('haarcascade_frontalface_default.xml')
+recognizer = create_LBPHFaceRecognizer()
+
+function load_images_from_folder(folder):
+    images = [], labels = [], label = 0
+    
+    for subfolder in list_folders(folder):
+        if is_directory(subfolder_path := join_path(folder, subfolder)):
+            for filename in list_files(subfolder_path):
+                if file_has_extension(filename, '.jpg') and (img := read_image(join_path(subfolder_path, filename))) is not None:
+                    images.append(convert_to_grayscale(img))
+                    labels.append(label)
+            label += 1
+    
+    return images, labels
+
+function train_recognizer(train_images_folder):
+    images, labels = load_images_from_folder(train_images_folder)
+    recognizer.train(images, convert_to_numpy_array(labels))
+
+function update_recognizer(train_images_folder):
+    images, labels = load_images_from_folder(train_images_folder)
+    recognizer.update(images, convert_to_numpy_array(labels))
+
+function calculate_metrics(test_images_folder):
+    true_positive, false_positive, true_negative, false_negative = 0, 0, 0, 0
+
+    for idx, img in enumerate(load_images_from_folder(test_images_folder)[0]):
+        for (x, y, w, h) in detect_faces(img):
+            label, _ = recognizer.predict(crop_face(img, x, y, w, h))
+            
+            if label_matches_test_label(label, load_images_from_folder(test_images_folder)[1][idx]):
+                true_positive += 1
+            else:
+                false_positive += 1
+
+    total_faces = count_faces(load_images_from_folder(test_images_folder)[0])
+    true_negative = total_faces - (true_positive + false_positive)
+
+    error_rate = calculate_error_rate(false_positive, false_negative, total_faces)
+    precision = calculate_precision(true_positive, false_positive)
+    false_discovery_rate = calculate_false_discovery_rate(false_positive, true_positive)
+    true_positive_rate = calculate_true_positive_rate(true_positive, total_faces)
+    false_negative_rate = calculate_false_negative_rate(false_negative, total_faces)
+    accuracy = calculate_accuracy(true_positive, true_negative, total_faces)
+
+    print_metrics(true_positive, true_negative, false_positive, false_negative)
+
+    return error_rate, precision, false_discovery_rate, true_positive_rate, false_negative_rate, accuracy
+
+train_images_folder = 'dataset2'
+test_images_folder = 'testDataset2'
+
+train_recognizer(train_images_folder)
+
+error_rate, precision, false_discovery_rate, true_positive_rate, false_negative_rate, accuracy = calculate_metrics(test_images_folder)
+print_accuracy_metrics(accuracy, error_rate, precision, false_discovery_rate, true_positive_rate, false_negative_rate)
